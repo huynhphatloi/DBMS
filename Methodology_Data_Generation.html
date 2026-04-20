@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Methodology: Synthetic Data Generation</title>
+<style>
+body {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 12pt;
+  line-height: 1.45;
+  margin: 48px;
+  color: #111;
+}
+h1 {
+  font-size: 18pt;
+  margin-top: 22px;
+  margin-bottom: 10px;
+}
+h2 {
+  font-size: 14pt;
+  margin-top: 18px;
+  margin-bottom: 8px;
+}
+p {
+  margin-top: 0;
+  margin-bottom: 10px;
+  text-align: justify;
+}
+.title {
+  text-align: center;
+  font-size: 20pt;
+  font-weight: bold;
+  margin-bottom: 18px;
+}
+.subtitle {
+  text-align: center;
+  font-size: 12pt;
+  margin-bottom: 22px;
+}
+pre {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 10pt;
+  line-height: 1.3;
+  white-space: pre-wrap;
+  border: 1px solid #bbbbbb;
+  padding: 10px;
+  background: #f7f7f7;
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+</style>
+</head>
+<body>
+<div class="title">Methodology: Synthetic Data Generation</div>
+<div class="subtitle">Dataset: synthetic_benchmark_10000_semantic_debiased_v3.csv</div>
+
+<h1>1. Introduction</h1>
+<p>The dataset synthetic_benchmark_10000_semantic_debiased_v3.csv was constructed as a synthetic benchmark for research in Natural Language Processing and Educational AI. The resource was designed to support four interrelated projects: Automatic Short Answer Grading, Misconception Mining, Automatic Feedback Generation, and Robustness and Adversarial Evaluation. Rather than treating these tasks as separate annotation problems, we model each student response as a multi-layer educational object that simultaneously supports correctness estimation, error diagnosis, pedagogical feedback generation, and robustness testing. In this sense, the dataset was intended not merely as a grading corpus, but as a controlled research environment for studying the full lifecycle of student-answer interpretation.</p>
+<p>The corpus was generated using a multi-stage synthetic data generation framework driven by large language models. The framework combines structured content design, prompt-based generation, rule-governed annotation, adversarial augmentation, and repeated validation. The final benchmark contains 10,000 instances derived from 800 unique question identifiers spanning science and computing topics. Each question is associated with multiple response realizations so that models can be evaluated on within-question variation rather than on isolated prompt-answer pairs. The semantic_debiased_v3 release reflects several rounds of refinement in which duplicated patterns, split leakage, stylistic artifacts, and shortcut-learning risks were explicitly reduced.</p>
+
+<h1>2. Design Objectives</h1>
+<p>The design of the dataset was guided by three primary objectives. First, we sought to construct a unified benchmark that could support four educational NLP tasks within a single schema. This required each instance to contain sufficient information for grading, misconception identification, feedback generation, and robustness analysis. Second, we aimed to simulate realistic student variation. Educational responses differ not only in correctness, but also in completeness, reasoning quality, confidence, discourse style, and lexical overlap with instructional materials. The benchmark therefore needed to include diverse forms of correct, partially correct, contradictory, irrelevant, and non-domain responses. Third, we sought to reduce trivial regularities that might allow models to succeed without real semantic understanding. In particular, we attempted to avoid strong correlations such as polished language implying correctness or disfluent language implying error.</p>
+<p>These objectives motivated a staged methodology in which conceptual content, student reasoning, pedagogical feedback, and robustness annotations were generated separately and then reconciled through consistency checks. The framework does not assume that a single generation pass will automatically produce benchmark-quality educational data. Instead, it treats diversity, annotation alignment, and leakage control as explicit constraints that must be enforced throughout the pipeline.</p>
+
+<h1>3. Benchmark Inspiration</h1>
+<p>The benchmark was inspired by established short-answer grading resources such as SciEntsBank and MohlerASAG. These datasets demonstrated the importance of comparing student responses against reference answers in a way that privileges semantic equivalence rather than exact lexical overlap. However, classical ASAG benchmarks focus primarily on correctness prediction. Our benchmark extends this paradigm by integrating misconception annotations, feedback targets, and adversarial metadata directly into the same instance structure. This extension allows the same student response to function simultaneously as a grading target, a diagnostic example, a feedback-generation input, and a robustness test case.</p>
+<p>At a conceptual level, the benchmark remains aligned with the educational rationale of prior short-answer datasets: student responses must be interpreted relative to both the question and the target conceptual explanation. At the same time, the dataset is intentionally broader in scope. It is designed not only to estimate whether an answer is correct, but also to explain why it is correct or incorrect, identify what misunderstanding it may reveal, and determine whether the response remains interpretable under adversarial perturbations.</p>
+
+<h1>4. Dataset Schema</h1>
+<p>Each instance in the dataset is represented as a structured educational record. Core text fields include question, reference_answer, alternative_reference_answers, and student_answer. Conceptual fields include key_concepts and misconception_inventory, which encode the canonical content expected in a correct response and the likely forms of misunderstanding associated with the question. Supervisory fields include semantic_correctness_score_0_5, label_5way, label_3way, and label_2way. The five-way label distinguishes correct, partially_correct_incomplete, contradictory, irrelevant, and non_domain responses, while the three-way and two-way labels provide coarser supervisory views. The semantic correctness score supplies an ordinal signal on a 0–5 scale, where 0 indicates entirely wrong or unusable content and 5 indicates a sufficiently complete and correct answer.</p>
+<p>The dataset also includes diagnostic fields such as misconception_tags, missing_concepts, and extra_incorrect_claims, which make it possible to analyze not only whether a student answer is wrong, but in what way it is wrong. Pedagogical targets are provided through feedback_short and feedback_detailed, together with feedback_type and feedback_tone. Robustness metadata include perturbation_type, adversarial_variant_of, and robustness_notes. Finally, structural fields such as instance_id, question_id, domain, subdomain, difficulty, split, and annotation_confidence support analysis, reproducibility, and rigorous evaluation. This schema was deliberately designed so that a single instance can be reused across the four intended research projects without loss of contextual information.</p>
+
+<h1>5. Synthetic Data Generation Pipeline</h1>
+<p>The dataset was generated through a staged pipeline. Stage 1 defined the domain taxonomy and question bank. Stage 2 created reference answers and key concepts. Stage 3 defined question-specific misconception inventories. Stage 4 simulated student answers using multiple personas. Stage 5 assigned labels and semantic correctness scores. Stage 6 generated short and detailed pedagogical feedback. Stage 7 created adversarial and robustness-focused variants. Stage 8 split the corpus into train, validation, and multiple evaluation sets. Stage 9 applied validation and refinement in order to reduce duplicates, leakage, and template artifacts. The modular structure of the pipeline allowed us to revise one annotation layer without regenerating the entire corpus from scratch.</p>
+
+<h2>5.1 Domain and Question Construction</h2>
+<p>The first stage constructed a domain taxonomy spanning both science and computing education. Domains included biology, chemistry, physics, earth science, environmental science, astronomy, health science, scientific method, programming fundamentals, data structures, algorithms, databases, operating systems, computer networks, software engineering, introductory AI/ML, mathematics for science, statistics and experiments, cybersecurity, and digital logic. Within each domain, we defined subdomains, focus concepts, contrast concepts, counterfactual conditions, and common incorrect statements. We then instantiated short-answer prompts from pedagogically motivated templates such as “What is the main idea behind X?”, “How does X work?”, “How is X different from Y?”, “What would happen if Z?”, and “Why is the statement M incorrect?”</p>
+<p>This stage produced 800 unique question identifiers and, ultimately, 10,000 instances. The final benchmark therefore contains multiple student answers for each question, enabling the study of answer diversity under shared conceptual requirements. We also assigned difficulty levels to reflect variability in conceptual demand and to support later analysis of task difficulty.</p>
+
+<h2>5.2 Reference Answer Construction</h2>
+<p>For each question, we generated a concise reference answer intended to capture the minimal expert explanation necessary for a correct response. We additionally generated alternative_reference_answers to encode acceptable paraphrases of the same semantic content. This design is important for ASAG because it avoids dependence on a single wording of the gold answer. Alongside the reference answers, we extracted key_concepts that represent the conceptual building blocks of the correct explanation. These key concepts later functioned as anchors for student answer simulation, misconception modeling, feedback generation, and lexical overlap analysis.</p>
+<p>Reference answer construction was constrained by two principles. First, the answer had to remain pedagogically meaningful and semantically sufficient. Second, it had to remain compact enough that students could express the same meaning in multiple distinct ways. This balance was necessary to encourage meaningful paraphrastic diversity rather than synthetic copying.</p>
+
+<h2>5.3 Misconception Modeling</h2>
+<p>Each question was paired with a misconception_inventory consisting of plausible but incorrect beliefs associated with the target concept. Rather than generating wrong answers arbitrarily, we modeled typical student errors as structured conceptual alternatives. These included missing prerequisite concepts, incorrect claims, causal inversions, concept confusions, and transfers of a relevant idea into an inappropriate context. For example, a response might contain the correct vocabulary but assign the wrong causal direction, or mention one necessary concept while omitting a second concept required for completeness.</p>
+<p>This stage enabled instance-level annotations such as misconception_tags, missing_concepts, and extra_incorrect_claims. Consequently, the benchmark supports not only correctness classification but also more fine-grained educational diagnosis. The misconception layer also served as an important control for answer simulation, since contradictory and partially correct responses were generated relative to known misconception structures rather than as arbitrary noisy outputs.</p>
+
+<h2>5.4 Student Answer Simulation</h2>
+<p>Student answer simulation is the core stage of the pipeline. We generated student_answer texts by conditioning on the question, reference answer, key concepts, target label, misconception inventory, and a student persona. The persona mechanism was used to simulate writing by learners with different abilities, confidence levels, and communication styles. Representative personas included concise strong students, detailed explainers, average but incomplete respondents, confused students, overconfident but incorrect students, distracted students, guessing students, memorization-oriented students, sloppy but correct writers, sloppy incorrect writers, mixed-reasoning students, and language-limited students.</p>
+<p>The simulation stage produced five broad categories of responses. Correct answers contained the target meaning, sometimes with high overlap and sometimes in lexically distant paraphrase. Partially correct answers included one correct conceptual component but omitted another required concept, condition, or explanatory step. Contradictory answers often sounded plausible and sometimes used the right keywords, but their meaning was semantically false because they asserted an incorrect relationship or misconception. Irrelevant answers remained topic-related but answered a neighboring question rather than the intended prompt. Non-domain responses included off-topic, fragmentary, or otherwise unusable answers. Through later semantic de-biasing, we ensured that each label class exhibited multiple writing styles and multiple lexical overlap levels. This was especially important for introducing low-overlap correct answers and high-overlap incorrect answers.</p>
+
+<h2>5.5 Label and Score Annotation</h2>
+<p>After simulating a student answer, the framework assigned both categorical and ordinal supervision. The categorical layer consisted of a five-way correctness label and derived three-way and two-way mappings. The ordinal layer consisted of semantic_correctness_score_0_5. We enforced alignment between label and score ranges so that the score supported, rather than contradicted, the categorical annotation. For instance, correct answers occupied the upper part of the scale, partially correct answers clustered in the middle, and contradictory or non-domain answers were assigned lower scores depending on residual relevance.</p>
+<p>This dual annotation design supports multiple modeling paradigms. A model may treat the task as multi-class classification, binary correctness detection, or scalar semantic scoring. Because the annotations are integrated into the same instance, researchers can also study cross-task transfer between grading and feedback or between misconception detection and ordinal scoring.</p>
+
+<h2>5.6 Feedback Generation</h2>
+<p>Each instance received two feedback targets. The feedback_short field was intended as a concise teacher-style response, while feedback_detailed contained a longer pedagogical explanation. These feedback targets were generated using the label state and misconception annotations, so that they could identify what was correct, what was wrong or missing, and what the student should revise. We also included feedback_type and feedback_tone to encode the communicative intention of the response, such as correction, scaffolding, encouragement, or misconception refutation.</p>
+<p>This stage was designed to support research on automatic feedback generation in addition to grading. Rather than viewing feedback as an afterthought, we treated it as a first-class annotation layer that translates model-internal correctness judgments into pedagogically meaningful language.</p>
+
+<h2>5.7 Adversarial Augmentation</h2>
+<p>The benchmark includes a substantial robustness component. Adversarial and perturbation-focused variants were created to expose vulnerabilities in shallow lexical models. Perturbation types included paraphrasing, surface noise, distractor clauses, misleading but fluent explanations, near paraphrases with changed meaning, and mixed responses containing one correct idea plus one fatal error. Adversarial relations were recorded using perturbation_type and adversarial_variant_of, while robustness_notes provided a natural-language description of the perturbation. The broader dataset includes 6,000 adversarially linked or perturbed instances, and the splitting strategy also includes a dedicated test_adversarial partition.</p>
+<p>The goal of this stage was to discourage models from relying on superficial overlap or stylistic cues. High-overlap contradictory responses and low-overlap correct responses were particularly important because they force a model to reason about content rather than appearance.</p>
+
+<h1>6. Data Splitting Strategy</h1>
+<p>The dataset was partitioned into train, validation, and multiple test splits in order to support evaluation under different forms of generalization. The final configuration contains 7,000 training instances, 1,000 validation instances, 500 test_seen instances, 500 test_unseen_answers instances, 400 test_unseen_questions instances, 300 test_unseen_domains instances, and 300 test_adversarial instances. The seen split evaluates conventional held-out performance. The unseen-answer split prevents reuse of exact student answers from training. The unseen-question split withholds entire question identifiers from the training set. The unseen-domain split withholds a full domain from training in order to measure topical generalization. The adversarial split concentrates difficult perturbation types intended to challenge lexical and stylistic shortcuts.</p>
+<p>This splitting strategy is methodologically important because ordinary random splits often overestimate true model generalization. By combining answer-level, question-level, domain-level, and adversarial evaluation settings, the benchmark assesses whether a model can generalize beyond the narrow distribution seen during training.</p>
+
+<h1>7. Quality Control and Validation</h1>
+<p>Quality control combined structural checks with semantic validation. Structural checks included exact duplicate detection, student-answer uniqueness audits, and verification of split constraints, especially for test_unseen_answers, test_unseen_questions, and test_unseen_domains. Semantic validation included label-score consistency checks, verification that misconception annotations matched the intended answer meaning, and audits of feedback coherence. Template audits were also performed to identify repeated generic shells and other synthetic artifacts that could encourage shortcut learning.</p>
+<p>The refinement process substantially improved the benchmark. The final semantic_debiased_v3 artifact preserved schema integrity, maintained 10,000 instances, and recorded no leakage in the unseen-answer split. It also achieved full student-answer uniqueness in the de-biased version and redistributed styles and lexical overlap patterns so that each label category contained multiple stylistic and semantic realizations. These controls do not eliminate all synthetic bias, but they reduce the most obvious forms of benchmark contamination.</p>
+
+<h1>8. Iterative Refinement Process</h1>
+<p>The dataset evolved through multiple refinement passes rather than through a single generation run. Early versions focused on building the core question bank, reference answers, misconception inventories, and labels. Later passes addressed duplicated answers, cross-split leakage, repeated templates, and feedback artifacts. Subsequent semantic de-biasing steps then targeted a more subtle issue: shortcut learning based on writing style, lexical overlap, or recurring sentence shells. In the v3 release, 8,666 rows were rewritten during a major semantic de-biasing phase, and the style distribution was rebalanced across ten answer styles including concise, explanatory, fragmented, noisy, overconfident, hedged, example-driven, paraphrased low-overlap, mixed-claim, and topic-drifted responses.</p>
+<p>This iterative refinement process is essential to the methodology. Synthetic data are rarely satisfactory after a single pass, particularly when the intended benchmark must support four different research tasks. We therefore treated validation failures as actionable signals and reran targeted repair procedures to improve diversity, remove repeated shells, fix split leakage, and reduce the risk that models could exploit spurious cues instead of semantic content.</p>
+
+<h1>9. Example Prompts Used</h1>
+<p>The following prompt templates illustrate how large language models were instructed during different stages of the pipeline.</p>
+
+<pre>You are generating educational short-answer benchmark items for introductory science and computing courses.
+
+Inputs:
+Domain: biology
+Subdomain: plant_biology
+Focus concept: photosynthesis in green plants
+Comparison concept: cellular respiration
+Counterfactual condition: a plant receives light but no carbon dioxide
+Common misclaim: "Plants get their food directly from soil instead of making it."
+
+Generate:
+1. One short-answer question appropriate for assessment.
+2. One reference answer in 1-3 sentences.
+3. Two alternative acceptable reference phrasings.
+4. A JSON list of key concepts required for grading.
+5. A JSON list of 2-4 misconception entries, each with a tag and belief statement.
+
+Constraints:
+The item must test conceptual understanding rather than rote recall.
+The reference answer must be concise but semantically complete.
+Return structured JSON only.</pre>
+
+<pre>You are simulating authentic student short answers for an educational NLP benchmark.
+
+Inputs:
+Question: How does photosynthesis in green plants work?
+Reference answer: Photosynthesis uses light energy to combine carbon dioxide and water into sugars, and oxygen is released as a by-product.
+Key concepts: ["light energy", "carbon dioxide", "water", "sugars", "oxygen"]
+Misconception inventory: [
+  {"tag": "confuses_photosynthesis_with_respiration", "belief": "Photosynthesis is the process plants use to break down sugar for energy."},
+  {"tag": "thinks_plants_absorb_food_from_soil", "belief": "Plants get their food directly from soil instead of making it."}
+]
+Persona: overconfident_wrong_student
+Target label: contradictory
+Target semantic score: 1
+Lexical overlap target: high
+
+Generate one student answer that sounds like a real student, uses some correct keywords, but remains conceptually wrong.
+Return:
+student_answer
+student_answer_style
+lexical_overlap_level
+misconception_tags
+missing_concepts
+extra_incorrect_claims</pre>
+
+<pre>You are generating a robustness-focused variant of an existing student answer.
+
+Original question:
+How does binary search work on a sorted list?
+
+Reference answer:
+Binary search repeatedly checks the middle item of a sorted list and removes half of the remaining search space each step.
+
+Original student answer:
+Binary search looks at the middle and keeps cutting the search range in half, so it only works if the data are sorted.
+
+Create one adversarial variant with these requirements:
+1. Keep the answer fluent and plausible.
+2. Preserve many of the original keywords.
+3. Introduce one fatal conceptual error.
+4. Make the response difficult for lexical or TF-IDF models.
+5. Specify perturbation_type.
+6. Explain briefly why the variant is harder.
+
+Return:
+student_answer
+perturbation_type
+robustness_notes
+gold_label_after_perturbation</pre>
+
+<h1>10. Code / Pseudo-code for Data Generation</h1>
+<p>The following pseudo-code illustrates the staged workflow used to generate and refine the dataset.</p>
+
+<pre>def build_dataset(domain_configs, split_targets):
+    instances = []
+    question_bank = build_question_bank(domain_configs)
+
+    for question_spec in question_bank:
+        reference_bundle = generate_reference_bundle(question_spec)
+        misconception_inventory = generate_misconceptions(question_spec, reference_bundle)
+        response_profiles = sample_response_profiles(question_spec)
+
+        for response_profile in response_profiles:
+            student_answer = simulate_student_answer(
+                question_spec,
+                reference_bundle,
+                misconception_inventory,
+                response_profile,
+            )
+            labels = annotate_labels_and_score(student_answer, reference_bundle, misconception_inventory)
+            feedback = generate_feedback(student_answer, labels, misconception_inventory)
+            instance = assemble_instance(
+                question_spec,
+                reference_bundle,
+                misconception_inventory,
+                student_answer,
+                labels,
+                feedback,
+            )
+            instances.append(instance)
+
+    instances = add_adversarial_variants(instances)
+    instances = assign_splits(instances, split_targets)
+    instances = validate_and_refine(instances)
+    return instances</pre>
+
+<pre>def generate_question_reference_pair(concept_config, llm):
+    prompt = f'''
+    Create one educational short-answer item.
+    Domain: {concept_config["domain"]}
+    Subdomain: {concept_config["subdomain"]}
+    Focus: {concept_config["focus"]}
+    Comparison: {concept_config["compare"]}
+    Condition: {concept_config["condition"]}
+
+    Return:
+    - question
+    - reference_answer
+    - alternative_reference_answers
+    - key_concepts
+    - misconception_inventory
+    '''
+    result = llm.generate_json(prompt)
+    return result</pre>
+
+<pre>def generate_student_answer(question_row, reference_bundle, persona, target_label, overlap_target, llm):
+    prompt = {
+        "question": question_row["question"],
+        "reference_answer": reference_bundle["reference_answer"],
+        "key_concepts": reference_bundle["key_concepts"],
+        "misconception_inventory": reference_bundle["misconception_inventory"],
+        "persona": persona,
+        "target_label": target_label,
+        "overlap_target": overlap_target,
+    }
+    response = llm.generate_json(render_student_prompt(prompt))
+    return {
+        "student_answer": response["student_answer"],
+        "student_answer_style": response["student_answer_style"],
+        "lexical_overlap_level": response["lexical_overlap_level"],
+    }</pre>
+
+<pre>def validate_instances(rows):
+    seen_rows = set()
+    train_answers = {normalize(r["student_answer"]) for r in rows if r["split"] == "train"}
+    train_questions = {r["question_id"] for r in rows if r["split"] == "train"}
+    train_domains = {r["domain"] for r in rows if r["split"] == "train"}
+
+    for row in rows:
+        row_key = tuple(row[col] for col in row.keys())
+        if row_key in seen_rows:
+            raise ValueError("Exact duplicate row detected")
+        seen_rows.add(row_key)
+
+        if row["split"] == "test_unseen_answers" and normalize(row["student_answer"]) in train_answers:
+            raise ValueError("Leakage in unseen-answer split")
+
+        if row["split"] == "test_unseen_questions" and row["question_id"] in train_questions:
+            raise ValueError("Leakage in unseen-question split")
+
+        if row["split"] == "test_unseen_domains" and row["domain"] in train_domains:
+            raise ValueError("Leakage in unseen-domain split")
+
+    return True</pre>
+
+<h1>11. Limitations</h1>
+<p>Despite careful design and repeated refinement, the dataset remains synthetic. This implies several limitations. First, synthetic student writing cannot fully reproduce the variability of authentic classroom language, which is shaped by motivation, fatigue, multilingual background, prior instruction, and idiosyncratic habits. Second, even after semantic de-biasing, some stylistic artifacts may persist. Third, shortcut learning risks cannot be eliminated completely; models may still discover residual correlations that are weaker than in naive synthetic datasets but stronger than in real educational data. Fourth, misconception inventories were modeled rather than directly observed from large-scale classroom annotation, which means that they reflect plausible pedagogical theory but not an exhaustive catalog of real student misunderstanding.</p>
+<p>These limitations do not invalidate the benchmark, but they do shape how results should be interpreted. The dataset is best understood as a controlled research instrument for evaluating educational NLP systems under structured conditions, rather than as a full substitute for naturally collected learner corpora.</p>
+
+<h1>12. Conclusion</h1>
+<p>The dataset synthetic_benchmark_10000_semantic_debiased_v3.csv was generated through a multi-stage synthetic data generation framework driven by large language models. The pipeline began with domain taxonomy design and question construction, proceeded through reference answer creation, misconception modeling, student answer simulation, label and score annotation, feedback generation, and adversarial augmentation, and concluded with structured splitting, validation, and iterative refinement. The resulting benchmark was designed to support Automatic Short Answer Grading, Misconception Mining, Automatic Feedback Generation, and Robustness and Adversarial Evaluation within a unified schema.</p>
+<p>By integrating multiple annotation layers into a single instance structure and by applying refinement passes to address duplication, leakage, repeated templates, feedback artifacts, and shortcut-learning risks, we sought to produce a benchmark that is more informative than a conventional short-answer grading dataset. Although synthetic data remain an approximation of real student language, the final dataset offers a practical and methodologically transparent foundation for multi-task research in Educational AI.</p>
+
+</body>
+</html>

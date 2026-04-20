@@ -1,0 +1,56 @@
+# =============================================================================
+# Robustness Evaluation Configuration
+# =============================================================================
+# Perturbation types, calibration analysis, and abstention thresholds.
+
+# Global random seed for reproducibility
+seed: 42
+
+# --- Perturbation Engine ---
+perturbations:
+  # Programmatic perturbation types applied to SciEntsBank test answers
+  types:
+    - keyword_stuffing     # Append key_concepts as a list
+    - verbosity_attack     # Pad with 3x irrelevant filler text
+    - copy_reference       # Replace student answer with reference_answer
+    - empty_answer         # Replace student answer with empty string
+    - random_text          # Replace student answer with random tokens
+
+  # Verbosity attack filler multiplier
+  verbosity_multiplier: 3
+
+  # Random text token count
+  random_text_tokens: 50
+
+# --- Adversarial Evaluation ---
+adversarial:
+  # Data_Generate adversarial split name
+  adversarial_split: test_adversarial
+  # Perturbation type taxonomy
+  taxonomy:
+    surface_level:
+      - synonym_swap
+      - paraphrase_low_overlap
+      - word_order_change
+      - grammar_noise
+    semantic:
+      - near-contradiction
+      - one_correct_plus_fatal_error
+      - concept-jumble
+      - vague_but_plausible
+    gaming_deception:
+      - high_overlap_wrong_meaning
+      - misleading_fluent_explanation
+      - hedge_language
+      - distractor_sentence_added
+
+# --- Calibration Analysis ---
+calibration:
+  # Number of bins for reliability diagrams
+  n_bins: 10
+  # Confidence threshold sweep range for accuracy-coverage curves
+  threshold_min: 0.0
+  threshold_max: 1.0
+  threshold_step: 0.05
+  # Target accuracy for optimal abstention threshold
+  target_accuracy: 0.95

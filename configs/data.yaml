@@ -1,0 +1,60 @@
+# =============================================================================
+# Data Pipeline Configuration
+# =============================================================================
+# Controls dataset paths, split ratios, and data quality thresholds.
+
+# Global random seed for reproducibility (seeds Python random, numpy, torch)
+seed: 42
+
+# Paths to raw dataset files (relative to project root)
+raw_data:
+  scientsbank:
+    path: data/raw/scientsbank/
+    format: xml
+  mohler:
+    path: data/raw/mohler/
+    format: csv
+  data_generate:
+    path: data-generate.csv
+    format: csv
+  data_scraping:
+    path: data-scraping.json
+    format: json
+
+# Output directory for unified JSONL files
+unified_output_dir: data/unified/
+
+# Split configuration
+splits:
+  # SciEntsBank: predefined splits (UA, UQ, UD) — preserved as-is
+  scientsbank:
+    preserve_predefined: true
+
+  # MohlerASAG: question-level split (no question appears in multiple partitions)
+  mohler:
+    strategy: question_level
+    train_ratio: 0.6
+    valid_ratio: 0.2
+    test_ratio: 0.2
+
+  # Data_Generate: predefined splits — preserved as-is
+  data_generate:
+    preserve_predefined: true
+    # Available splits: train, valid, test_unseen_questions,
+    #   test_unseen_answers, test_seen, test_adversarial, test_unseen_domains
+
+# Label harmonization settings
+harmonization:
+  # MohlerASAG score_raw → label_2way threshold
+  mohler_2way_threshold: 2.5
+  # MohlerASAG score_raw → label_3way boundaries
+  mohler_3way_boundaries: [0.0, 1.0, 4.0, 5.0]
+  # MohlerASAG score normalization divisor
+  mohler_score_max: 5.0
+
+# Data quality audit thresholds
+audit:
+  # Minimum annotation confidence for Data_Generate records
+  min_annotation_confidence: 0.85
+  # Minimum token count for student answers
+  min_student_answer_tokens: 3

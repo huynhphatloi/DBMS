@@ -1,0 +1,70 @@
+# =============================================================================
+# Grading Models Configuration
+# =============================================================================
+# Hyperparameters for all grading baselines and the primary DeBERTa model.
+
+# Global random seed for reproducibility
+seed: 42
+
+# Task formulation: "2way", "3way", "5way", or "regression"
+task: 3way
+
+# Training splits
+train_splits:
+  - source: scientsbank
+    split: train
+  - source: data_generate
+    split: train
+
+# Test splits
+test_splits:
+  - source: scientsbank
+    split: test_ua
+  - source: scientsbank
+    split: test_uq
+  - source: scientsbank
+    split: test_ud
+
+# Bootstrap CI iterations for evaluation
+bootstrap_iterations: 1000
+
+# --- Lexical Overlap Baseline ---
+lexical:
+  # Metric used for threshold-based classification
+  metric: rouge_l
+  threshold: 0.5
+
+# --- TF-IDF + Traditional ML Baseline ---
+tfidf_ml:
+  max_features: 10000
+  classifiers:
+    - logistic_regression
+    - svm_linear
+    - svm_rbf
+    - random_forest
+    - gradient_boosting
+
+# --- SBERT Similarity Baseline ---
+sbert:
+  model_name: all-MiniLM-L6-v2
+  threshold: 0.5
+
+# --- Cross-Encoder Baseline ---
+cross_encoder:
+  model_name: cross-encoder/stsb-roberta-base
+  epochs: 5
+  batch_size: 16
+  learning_rate: 2.0e-5
+  warmup_ratio: 0.1
+
+# --- Reference-Answer-Aware DeBERTa (Primary Model) ---
+ref_aware:
+  encoder: microsoft/deberta-v3-base
+  epochs: 10
+  batch_size: 16
+  learning_rate: 2.0e-5
+  warmup_ratio: 0.1
+  max_length: 512
+  multi_task:
+    enabled: true
+    alpha: 0.7  # L = alpha * L_cls + (1 - alpha) * L_reg

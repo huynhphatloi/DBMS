@@ -1,0 +1,56 @@
+# =============================================================================
+# Feedback Generation Configuration
+# =============================================================================
+# Settings for concept gap detection, feedback strategies, and evaluation.
+
+# Global random seed for reproducibility
+seed: 42
+
+# --- Concept Gap Detector ---
+concept_gap:
+  # NLI model for entailment/contradiction classification
+  nli_model: cross-encoder/nli-deberta-v3-base
+  # Confidence threshold for NLI predictions
+  nli_threshold: 0.5
+
+# --- Template-Based Feedback ---
+template:
+  # Whether to include key_concepts in feedback text
+  include_concepts: true
+
+# --- Retrieval-Based Feedback ---
+retrieval:
+  # SBERT model for encoding student answers
+  sbert_model: all-MiniLM-L6-v2
+  # Minimum cosine similarity to use retrieved feedback
+  similarity_threshold: 0.5
+  # Maximum number of candidates to consider
+  top_k: 5
+
+# --- T5 Generative Feedback ---
+generative:
+  model_name: t5-base
+  epochs: 5
+  batch_size: 8
+  learning_rate: 3.0e-4
+  max_input_length: 512
+  max_output_length: 256
+  # Grounded mode includes missing_concepts in input
+  grounded: true
+
+# --- Hybrid Pipeline ---
+hybrid:
+  # NLI factual consistency threshold; below this, fall back to template
+  consistency_threshold: 0.7
+
+# --- Feedback Evaluation ---
+evaluation:
+  # Number of stratified samples for human evaluation
+  human_eval_samples: 100
+  # Metrics to compute
+  metrics:
+    - rouge_l
+    - bertscore
+    - concept_coverage
+    - factual_consistency
+    - hallucination_rate
