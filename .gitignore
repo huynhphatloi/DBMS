@@ -30,7 +30,9 @@ coverage.xml
 
 # Node / Next.js (demos)
 node_modules/
+demos/**/node_modules/
 .next/
+demos/**/.next/
 out/
 .vercel
 

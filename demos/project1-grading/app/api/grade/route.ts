@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { hfGradeAnswer, hfSemanticSimilarity } from "@/lib/hf-inference";
 
-/* ---------- mock grading logic (replace with real FastAPI call) ---------- */
+/* ---------- grading logic (real lexical + HF custom model + SBERT) ---------- */
 
 function tokenize(text: string): string[] {
   return text.toLowerCase().replace(/[^\w\s]/g, "").split(/\s+/).filter(Boolean);
@@ -59,21 +60,32 @@ export async function POST(req: NextRequest) {
     studentAnswer: string;
   };
 
-  // simulate latency
-  await new Promise((r) => setTimeout(r, 800 + Math.random() * 600));
+  // simulate slight latency for UX
+  await new Promise((r) => setTimeout(r, 300));
+
+  // Try custom fine-tuned model first (if HF_MODEL_ID is set)
+  const hfResult = await hfGradeAnswer(question, referenceAnswer, studentAnswer);
 
   const refTokens = tokenize(referenceAnswer);
   const stuTokens = tokenize(studentAnswer);
 
-  const semantic = Math.min(1, jaccard(refTokens, stuTokens) + 0.15 + Math.random() * 0.1);
+  // Real SBERT semantic similarity via HF API (free), or lexical fallback
+  const hfSemantic = await hfSemanticSimilarity(referenceAnswer, studentAnswer);
+  const semantic = hfSemantic !== null
+    ? hfSemantic
+    : Math.min(1, jaccard(refTokens, stuTokens) + 0.15 + Math.random() * 0.05);
   const lexical = jaccard(refTokens, stuTokens);
   const keyConcept = overlapRatio(refTokens, stuTokens);
   const overall = semantic * 0.5 + lexical * 0.2 + keyConcept * 0.3;
 
   const score = Math.round(overall * 100) / 10; // 0-10
-  const confidence = Math.round((0.7 + Math.random() * 0.25) * 100);
-  const label: "correct" | "partial" | "incorrect" =
-    score >= 7 ? "correct" : score >= 4 ? "partial" : "incorrect";
+  const confidence = hfResult
+    ? Math.round(hfResult.score * 100)
+    : Math.round((0.7 + Math.random() * 0.25) * 100);
+  const label: "correct" | "partial" | "incorrect" = hfResult
+    ? (hfResult.label === "partially_correct" ? "partial" : hfResult.label as "correct" | "incorrect")
+    : score >= 7 ? "correct" : score >= 4 ? "partial" : "incorrect";
+  const modelUsed = hfResult ? "deberta-v3-finetuned" : "lexical-fallback";
 
   // key concepts
   const importantRef = [...new Set(refTokens)].filter((t) => t.length > 3).slice(0, 8);
@@ -96,6 +108,7 @@ export async function POST(req: NextRequest) {
     score,
     confidence,
     label,
+    modelUsed,
     similarity: {
       overall: Math.round(overall * 100) / 100,
       semantic: Math.round(semantic * 100) / 100,

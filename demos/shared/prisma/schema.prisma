@@ -1,0 +1,198 @@
+// Prisma schema for ASAG Research Framework
+// Maps to UnifiedRecord Python dataclass
+// Database: Supabase PostgreSQL (free tier)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Core table: mirrors UnifiedRecord ───────────────────────────
+
+model StudentAnswer {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  // Identity
+  sampleId      String @unique @map("sample_id")
+  sourceDataset String @map("source_dataset")
+  originalId    String @map("original_id")
+  questionId    String @map("question_id")
+
+  // Domain
+  domain     String
+  subdomain  String
+  difficulty String @default("unknown")
+
+  // Core triplet
+  question        String
+  referenceAnswer String @map("reference_answer")
+  studentAnswer   String @map("student_answer")
+
+  // Grading labels
+  scoreRaw        Float?  @map("score_raw")
+  scoreNormalized Float?  @map("score_normalized")
+  label2way       String? @map("label_2way")
+  label3way       String? @map("label_3way")
+  label5way       String? @map("label_5way")
+
+  // Concept annotations (stored as JSON arrays)
+  keyConcepts          Json @default("[]") @map("key_concepts")
+  misconceptionTags    Json @default("[]") @map("misconception_tags")
+  missingConcepts      Json @default("[]") @map("missing_concepts")
+  extraIncorrectClaims Json @default("[]") @map("extra_incorrect_claims")
+
+  // Feedback
+  feedbackShort    String? @map("feedback_short")
+  feedbackDetailed String? @map("feedback_detailed")
+  feedbackType     String? @map("feedback_type")
+  feedbackTone     String? @map("feedback_tone")
+
+  // Metadata
+  split                String  @default("")
+  isHumanAnnotated     Boolean @default(false) @map("is_human_annotated")
+  isSynthetic          Boolean @default(false) @map("is_synthetic")
+  isAdversarial        Boolean @default(false) @map("is_adversarial")
+  perturbationType     String? @map("perturbation_type")
+  adversarialVariantOf String? @map("adversarial_variant_of")
+  studentAnswerStyle   String? @map("student_answer_style")
+  annotationConfidence Float?  @map("annotation_confidence")
+
+  // Usability flags
+  usableForGrading             Boolean @default(true) @map("usable_for_grading")
+  usableForFeedback            Boolean @default(true) @map("usable_for_feedback")
+  usableForMisconceptionMining Boolean @default(true) @map("usable_for_misconception_mining")
+  usableForRobustnessEval      Boolean @default(true) @map("usable_for_robustness_eval")
+
+  // Relations
+  gradingResults    GradingResult[]
+  clusterAssignment ClusterAssignment?
+
+  @@index([sourceDataset, split])
+  @@index([questionId])
+  @@index([label3way])
+  @@index([domain])
+  @@map("student_answers")
+}
+
+// ─── Grading results (Project 1 + 3) ────────────────────────────
+
+model GradingResult {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  studentAnswerId Int           @map("student_answer_id")
+  studentAnswer   StudentAnswer @relation(fields: [studentAnswerId], references: [id])
+
+  modelName      String  @map("model_name")
+  predictedLabel String? @map("predicted_label")
+  predictedScore Float?  @map("predicted_score")
+  confidence     Float?
+
+  // Similarity breakdown
+  similaritySemantic   Float? @map("similarity_semantic")
+  similarityLexical    Float? @map("similarity_lexical")
+  similarityKeyConcept Float? @map("similarity_key_concept")
+  similarityOverall    Float? @map("similarity_overall")
+
+  // Explanation
+  explanation     String?
+  matchedConcepts Json    @default("[]") @map("matched_concepts")
+  missingConcepts Json    @default("[]") @map("missing_concepts")
+
+  @@index([studentAnswerId])
+  @@index([modelName])
+  @@map("grading_results")
+}
+
+// ─── Cluster assignments (Project 2) ────────────────────────────
+
+model ClusterAssignment {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  studentAnswerId Int           @unique @map("student_answer_id")
+  studentAnswer   StudentAnswer @relation(fields: [studentAnswerId], references: [id])
+
+  clusterId         Int    @map("cluster_id")
+  clusterLabel      String @map("cluster_label")
+  embeddingStrategy String @map("embedding_strategy")
+  clusteringMethod  String @map("clustering_method")
+
+  // UMAP coordinates for visualization
+  umapX Float? @map("umap_x")
+  umapY Float? @map("umap_y")
+
+  @@index([clusterId])
+  @@index([embeddingStrategy, clusteringMethod])
+  @@map("cluster_assignments")
+}
+
+// ─── Clusters metadata (Project 2) ──────────────────────────────
+
+model Cluster {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  clusterId         Int    @map("cluster_id")
+  label             String
+  embeddingStrategy String @map("embedding_strategy")
+  clusteringMethod  String @map("clustering_method")
+
+  // Metrics
+  cohesion Float?
+  size     Int    @default(0)
+  keywords Json   @default("[]")
+
+  // Intrinsic metrics (per-run)
+  silhouetteScore  Float? @map("silhouette_score")
+  calinskiHarabasz Float? @map("calinski_harabasz")
+  daviesBouldin    Float? @map("davies_bouldin")
+
+  @@unique([clusterId, embeddingStrategy, clusteringMethod])
+  @@map("clusters")
+}
+
+// ─── Feedback results (Project 4) ───────────────────────────────
+
+model FeedbackResult {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  // Input (can be ad-hoc, not necessarily from StudentAnswer table)
+  question        String
+  referenceAnswer String @map("reference_answer")
+  studentAnswer   String @map("student_answer")
+  predictedLabel  String @map("predicted_label")
+  tone            String @default("friendly")
+
+  // Output
+  feedbackShort    String @map("feedback_short")
+  feedbackDetailed String @map("feedback_detailed")
+  strategy         String // template, retrieval, generative, hybrid
+
+  // Quality metrics
+  consistencyScore Float?  @map("consistency_score")
+  usedFallback     Boolean @default(false) @map("used_fallback")
+
+  // Concept gap
+  presentConcepts      Json @default("[]") @map("present_concepts")
+  missingConcepts      Json @default("[]") @map("missing_concepts")
+  contradictedConcepts Json @default("[]") @map("contradicted_concepts")
+
+  // Scores
+  completenessScore Float? @map("completeness_score")
+  accuracyScore     Float? @map("accuracy_score")
+  terminologyScore  Float? @map("terminology_score")
+  overallScore      Float? @map("overall_score")
+
+  // User feedback
+  helpfulVote Boolean? @map("helpful_vote")
+
+  @@map("feedback_results")
+}
